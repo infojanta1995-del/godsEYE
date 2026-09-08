@@ -18,14 +18,23 @@ import {
   AlertTriangle,
   Flame,
   ShieldCheck,
+  Compass,
+  Volume2,
+  Type,
 } from 'lucide-react';
-import { OutputTab, StudioConfig, GodseyeAiResult, RegenerateComponentType } from '../types';
+import { OutputTab, StudioConfig, GodseyeAiResult, RegenerateComponentType, VideoFormat } from '../types';
 import { QualityCheckSection } from './output/QualityCheckSection';
 import { ThumbnailSection } from './output/ThumbnailSection';
 import { SeoPlatformSection } from './output/SeoPlatformSection';
 import { KeywordsSection } from './output/KeywordsSection';
 import { VideoPromptsSection } from './output/VideoPromptsSection';
 import { AdobeExpressSection } from './output/AdobeExpressSection';
+import { VideoGenerationHub } from './VideoGenerationHub';
+import { AiVoiceGenerator } from './AiVoiceGenerator';
+import { ContentDirectorSection } from './output/ContentDirectorSection';
+import { ViralHooksSection } from './output/ViralHooksSection';
+import { TrendingIntelligenceSection } from './output/TrendingIntelligenceSection';
+import { TitleEngineSection } from './output/TitleEngineSection';
 
 interface OutputWorkspaceProps {
   config: StudioConfig;
@@ -33,18 +42,27 @@ interface OutputWorkspaceProps {
   isInitialized: boolean;
   aiResult: GodseyeAiResult | null;
   isLoading: boolean;
+  projectName?: string;
   onRegenerate: () => void;
   onRegenerateComponent?: (component: RegenerateComponentType) => void;
+  onUpdateVideoFormat?: (format: VideoFormat) => void;
+  onUpdateAiResult?: (updated: GodseyeAiResult) => void;
 }
 
 const TABS: { id: OutputTab; label: string; icon: React.ReactNode }[] = [
   { id: 'Overview', label: 'Overview', icon: <Layers className="w-4 h-4 text-cyan-400" /> },
-  { id: 'Quality Check', label: 'Quality Check', icon: <ShieldCheck className="w-4 h-4 text-emerald-400" /> },
+  { id: 'Story Angle', label: 'Story Angle', icon: <Compass className="w-4 h-4 text-cyan-400" /> },
+  { id: 'Viral Hooks', label: 'Viral Hooks', icon: <Flame className="w-4 h-4 text-rose-400" /> },
   { id: 'Script', label: 'Script', icon: <FileText className="w-4 h-4 text-blue-400" /> },
+  { id: 'Quality Check', label: 'Quality Check', icon: <ShieldCheck className="w-4 h-4 text-emerald-400" /> },
   { id: 'Scenes', label: 'Scenes', icon: <Clapperboard className="w-4 h-4 text-purple-400" /> },
   { id: 'Video Prompts', label: 'Video Prompts', icon: <Video className="w-4 h-4 text-pink-400" /> },
-  { id: 'Adobe Express', label: 'Adobe Express', icon: <Sparkles className="w-4 h-4 text-red-400" /> },
+  { id: 'Video Generation', label: 'Video Generation', icon: <Video className="w-4 h-4 text-cyan-400" /> },
   { id: 'Thumbnail', label: 'Thumbnail', icon: <ImageIcon className="w-4 h-4 text-amber-400" /> },
+  { id: 'AI Voice', label: 'AI Voice (TTS)', icon: <Volume2 className="w-4 h-4 text-violet-400" /> },
+  { id: 'Trending Intel', label: 'Trending Intel', icon: <TrendingUp className="w-4 h-4 text-amber-400" /> },
+  { id: 'Keywords', label: 'Keywords', icon: <KeyRound className="w-4 h-4 text-emerald-400" /> },
+  { id: 'Retention', label: 'Retention', icon: <TrendingUp className="w-4 h-4 text-emerald-500" /> },
   { id: 'YouTube Shorts', label: 'YouTube Shorts', icon: <Tv className="w-4 h-4 text-rose-400" /> },
   { id: 'YouTube', label: 'YouTube', icon: <Tv className="w-4 h-4 text-red-500" /> },
   { id: 'Instagram', label: 'Instagram', icon: <Share2 className="w-4 h-4 text-pink-400" /> },
@@ -54,8 +72,7 @@ const TABS: { id: OutputTab; label: string; icon: React.ReactNode }[] = [
   { id: 'X', label: 'X', icon: <Share2 className="w-4 h-4 text-slate-300" /> },
   { id: 'Pinterest', label: 'Pinterest', icon: <Share2 className="w-4 h-4 text-rose-500" /> },
   { id: 'LinkedIn', label: 'LinkedIn', icon: <Share2 className="w-4 h-4 text-blue-600" /> },
-  { id: 'Keywords', label: 'Keywords', icon: <KeyRound className="w-4 h-4 text-emerald-400" /> },
-  { id: 'Retention', label: 'Retention', icon: <TrendingUp className="w-4 h-4 text-emerald-500" /> },
+  { id: 'Adobe Express', label: 'Adobe Express', icon: <Sparkles className="w-4 h-4 text-red-400" /> },
 ];
 
 export const OutputWorkspace: React.FC<OutputWorkspaceProps> = ({
@@ -64,8 +81,11 @@ export const OutputWorkspace: React.FC<OutputWorkspaceProps> = ({
   isInitialized,
   aiResult,
   isLoading,
+  projectName,
   onRegenerate,
   onRegenerateComponent,
+  onUpdateVideoFormat,
+  onUpdateAiResult,
 }) => {
   const [activeTab, setActiveTab] = useState<OutputTab>('Overview');
   const [copyNotification, setCopyNotification] = useState<string | null>(null);
@@ -143,6 +163,17 @@ ${aiResult.script.text}
 
 Timed Breakdown:
 ${aiResult.script.sections.map((s) => `[${s.phase}] ${s.name}: ${s.narration}`).join('\n\n')}`;
+          break;
+
+        case 'Video Generation':
+          content = `GODSEYE AI - VIDEO GENERATION HUB
+==================================================
+Master Style: ${aiResult.masterVideoStyle?.visualAesthetic || 'Cinematic Documentary'}
+Color: ${aiResult.masterVideoStyle?.colorPalette}
+Lighting: ${aiResult.masterVideoStyle?.lighting}
+
+SCENE PROMPTS:
+${aiResult.scenes.map((s) => `SCENE ${s.sceneNumber} (${s.time}):\n${s.videoPrompt?.prompt || s.visual}`).join('\n\n')}`;
           break;
 
         case 'Scenes':
@@ -1000,6 +1031,48 @@ SCENE ${s.sceneNumber} (${s.duration})
           </div>
         )}
 
+        {/* TAB: STORY ANGLE & CONTENT DIRECTOR */}
+        {activeTab === 'Story Angle' && (
+          <div className="space-y-4 animate-fadeIn">
+            {aiResult ? (
+              <ContentDirectorSection
+                contentDirector={aiResult.contentDirector}
+                storyAngle={aiResult.storyAngle}
+                analysis={aiResult.analysis}
+                onCopyText={handleCopyText}
+              />
+            ) : (
+              <div className="p-8 rounded-xl border border-dashed border-slate-700 bg-slate-950/40 text-center space-y-2">
+                <Compass className="w-8 h-8 text-cyan-400 mx-auto" />
+                <p className="text-sm font-bold text-slate-200">No Story Angle Generated Yet</p>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  Click "GENERATE GODSEYE CONTENT" to activate Content Director evaluation, narrative framing, and psychological anchors.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB: VIRAL HOOK ENGINE */}
+        {activeTab === 'Viral Hooks' && (
+          <div className="space-y-4 animate-fadeIn">
+            {aiResult ? (
+              <ViralHooksSection
+                hooks={aiResult.hooks}
+                onCopyText={handleCopyText}
+              />
+            ) : (
+              <div className="p-8 rounded-xl border border-dashed border-slate-700 bg-slate-950/40 text-center space-y-2">
+                <Flame className="w-8 h-8 text-rose-400 mx-auto" />
+                <p className="text-sm font-bold text-slate-200">No Hooks Generated Yet</p>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  Click "GENERATE GODSEYE CONTENT" to synthesize 10 hook category formulas with AI estimated retention scores.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* TAB: QUALITY CHECK (Step 5 Upgrade) */}
         {activeTab === 'Quality Check' && (
           <QualityCheckSection
@@ -1114,6 +1187,13 @@ SCENE ${s.sceneNumber} (${s.duration})
                     </div>
                   </div>
                 </div>
+
+                {/* TITLE ENGINE (10 Strategic Formulas & Scores) */}
+                <TitleEngineSection
+                  titleEngine={aiResult.titleEngine}
+                  defaultTitle={aiResult.script.title || config.title}
+                  onCopyText={handleCopyText}
+                />
 
                 {/* VOICE-OVER DIRECTION (Step 5 Upgrade) */}
                 {aiResult.voiceOverDirection && (
@@ -1241,6 +1321,29 @@ SCENE ${s.sceneNumber} (${s.duration})
                     {aiResult.script.text}
                   </div>
                 </div>
+
+                {/* STEP 7: AI VOICE / TTS ENGINE SECTION */}
+                <AiVoiceGenerator
+                  scriptText={
+                    aiResult.polishedScript ||
+                    aiResult.script.fullScript ||
+                    aiResult.script.text ||
+                    aiResult.script.sections.map((s) => s.narration).join(' ')
+                  }
+                  scenes={aiResult.scenes}
+                  contentType={config.contentType}
+                  mood={config.mood}
+                  existingAudioData={aiResult.ttsAudio}
+                  onAudioGenerated={(audioData) => {
+                    if (!aiResult) return;
+                    const updatedResult: GodseyeAiResult = {
+                      ...aiResult,
+                      ttsAudio: audioData,
+                    };
+                    onUpdateAiResult?.(updatedResult);
+                  }}
+                  onNavigateToAdobeExpress={() => setActiveTab('Adobe Express')}
+                />
               </div>
             ) : (
               <div className="p-6 rounded-xl border border-dashed border-slate-700 bg-slate-950/40 text-center space-y-2">
@@ -1248,6 +1351,50 @@ SCENE ${s.sceneNumber} (${s.duration})
                 <p className="text-sm font-bold text-slate-200">No Script Generated Yet</p>
                 <p className="text-xs text-slate-400 max-w-md mx-auto">
                   Click "GENERATE GODSEYE CONTENT" to synthesize natural, spoken-aloud narration in {config.language} tailored to {config.duration}.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* STEP 7: VIDEO GENERATION HUB */}
+        {activeTab === 'Video Generation' && (
+          <div className="space-y-4 animate-fadeIn">
+            {aiResult ? (
+              <VideoGenerationHub
+                result={aiResult}
+                projectName={projectName || config.title || 'GODSEYE Project'}
+                selectedFormat={config.videoFormat}
+                onFormatChange={onUpdateVideoFormat}
+                onRegeneratePrompts={() => onRegenerateComponent?.('videoPrompts')}
+                onUpdateScenePrompt={(sceneNumber, newPrompt) => {
+                  if (!aiResult) return;
+                  const updatedScenes = aiResult.scenes.map((s) => {
+                    if (s.sceneNumber === sceneNumber) {
+                      return {
+                        ...s,
+                        videoPrompt: {
+                          ...s.videoPrompt,
+                          prompt: newPrompt,
+                          negativePrompt: s.videoPrompt?.negativePrompt || aiResult.masterVideoStyle?.negativePrompt || '',
+                        },
+                      };
+                    }
+                    return s;
+                  });
+                  const updatedResult: GodseyeAiResult = {
+                    ...aiResult,
+                    scenes: updatedScenes,
+                  };
+                  onUpdateAiResult?.(updatedResult);
+                }}
+              />
+            ) : (
+              <div className="p-8 rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 text-center space-y-3">
+                <Video className="w-10 h-10 text-cyan-400 mx-auto" />
+                <h3 className="text-base font-bold text-white font-mono">VIDEO GENERATION HUB</h3>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  Turn your GODSEYE scenes into production-ready AI video clips. Generate your content package first to load scene prompts, master video styling, and camera directions.
                 </p>
               </div>
             )}
@@ -1423,6 +1570,58 @@ SCENE ${s.sceneNumber} (${s.duration})
             onRegenerateThumbnail={() => onRegenerateComponent?.('thumbnail')}
             isLoading={isLoading}
           />
+        )}
+
+        {/* TAB: AI VOICE GENERATOR (TTS) */}
+        {activeTab === 'AI Voice' && (
+          <div className="space-y-4 animate-fadeIn">
+            {aiResult ? (
+              <AiVoiceGenerator
+                scriptText={aiResult.polishedScript || aiResult.script.text}
+                defaultLanguage={config.language}
+                defaultMood={config.mood}
+                defaultStyle={config.contentStyle}
+                existingAudio={aiResult.ttsAudio}
+                onAudioGenerated={(audioData) => {
+                  const updatedResult: GodseyeAiResult = {
+                    ...aiResult,
+                    ttsAudio: audioData,
+                  };
+                  onUpdateAiResult?.(updatedResult);
+                }}
+                onNavigateToAdobeExpress={() => setActiveTab('Adobe Express')}
+              />
+            ) : (
+              <div className="p-8 rounded-xl border border-dashed border-slate-700 bg-slate-950/40 text-center space-y-2">
+                <Volume2 className="w-8 h-8 text-violet-400 mx-auto" />
+                <p className="text-sm font-bold text-slate-200">No Script Audio Available Yet</p>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  Generate your script first, then create natural AI voiceover narration using Google Gemini TTS.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB: TRENDING INTELLIGENCE */}
+        {activeTab === 'Trending Intel' && (
+          <div className="space-y-4 animate-fadeIn">
+            {aiResult ? (
+              <TrendingIntelligenceSection
+                trendData={aiResult.trendIntelligence}
+                storyTitle={aiResult.analysis.mainTopic || config.title}
+                onCopyText={handleCopyText}
+              />
+            ) : (
+              <div className="p-8 rounded-xl border border-dashed border-slate-700 bg-slate-950/40 text-center space-y-2">
+                <TrendingUp className="w-8 h-8 text-amber-400 mx-auto" />
+                <p className="text-sm font-bold text-slate-200">No Trending Intelligence Evaluated Yet</p>
+                <p className="text-xs text-slate-400 max-w-md mx-auto">
+                  Click "GENERATE GODSEYE CONTENT" to evaluate topic velocity, audience interest, and saturation risk.
+                </p>
+              </div>
+            )}
+          </div>
         )}
 
         {/* TAB 6-14: MULTI-PLATFORM SEO TABS */}

@@ -5,11 +5,17 @@ import { StudioControls } from './components/StudioControls';
 import { GenerateAction } from './components/GenerateAction';
 import { OutputWorkspace } from './components/OutputWorkspace';
 import { BeginnerGuideModal } from './components/BeginnerGuideModal';
+import { ThemeCustomizerModal } from './components/ThemeCustomizerModal';
 import { DashboardSummary } from './components/DashboardSummary';
 import { ActiveProjectBar } from './components/ActiveProjectBar';
 import { ProjectHistoryDrawer } from './components/ProjectHistoryDrawer';
 import { SampleStory, SAMPLE_STORIES } from './data/sampleStories';
 import { GODSEYE_API } from './services/apiClient';
+import {
+  loadSavedThemeSettings,
+  persistThemeSettings,
+  applyThemeToDOM,
+} from './services/themeService';
 import {
   createNewProject,
   getAllProjects,
@@ -33,6 +39,7 @@ import {
   GodseyeAiResult,
   RegenerateComponentType,
   GodseyeProject,
+  ThemeSettings,
 } from './types';
 
 const INITIAL_CONFIG: StudioConfig = {
@@ -52,6 +59,7 @@ const INITIAL_CONFIG: StudioConfig = {
 export default function App() {
   const [config, setConfig] = useState<StudioConfig>(INITIAL_CONFIG);
   const [isGuideOpen, setIsGuideOpen] = useState(false);
+  const [isThemeModalOpen, setIsThemeModalOpen] = useState(false);
   const [isProjectsDrawerOpen, setIsProjectsDrawerOpen] = useState(false);
   const [isOutputInitialized, setIsOutputInitialized] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -59,6 +67,21 @@ export default function App() {
   const [statusMessage, setStatusMessage] = useState<string | undefined>(undefined);
   const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [aiResult, setAiResult] = useState<GodseyeAiResult | null>(null);
+
+  // Theme & Visual Customizer State (Parts A-C)
+  const [themeSettings, setThemeSettings] = useState<ThemeSettings>(() =>
+    loadSavedThemeSettings()
+  );
+
+  useEffect(() => {
+    applyThemeToDOM(themeSettings);
+  }, [themeSettings]);
+
+  const handleThemeChange = (updated: ThemeSettings) => {
+    setThemeSettings(updated);
+    persistThemeSettings(updated);
+    applyThemeToDOM(updated);
+  };
 
   // STEP 6: Project History State
   const [projects, setProjects] = useState<GodseyeProject[]>([]);
@@ -384,6 +407,23 @@ export default function App() {
     }
   };
 
+  const handleUpdateAiResult = (updated: GodseyeAiResult) => {
+    setAiResult(updated);
+    if (currentProject) {
+      const updatedProject: GodseyeProject = {
+        ...currentProject,
+        updatedAt: new Date().toISOString(),
+        content: {
+          ...currentProject.content,
+          ...updated,
+        },
+      };
+      saveProject(updatedProject);
+      setProjects(getAllProjects());
+      setCurrentProject(updatedProject);
+    }
+  };
+
   // Section 9: Main Button click handler with Real AI Generation Workflow & Auto-Save
   const handleGenerate = async () => {
     let currentConfig = config;
@@ -559,97 +599,111 @@ export default function App() {
         projectsCount={projects.length}
         onOpenProjects={() => setIsProjectsDrawerOpen(true)}
         onNewProject={handleNewProject}
+        onOpenTheme={() => setIsThemeModalOpen(true)}
       />
 
-      {/* Main Workspace Container */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
-        {/* STEP 6: Dashboard Summary with Project Metrics & Quick Access */}
-        <DashboardSummary
-          projects={projects}
-          activeProjectId={currentProject.id}
-          onOpenProjectsList={() => setIsProjectsDrawerOpen(true)}
-          onOpenProject={handleOpenProject}
-          onNewProject={handleNewProject}
-        />
+      <div id="godseye-hue-stage" className="flex-1 flex flex-col">
+        {/* Main Workspace Container */}
+        <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-6">
+          {/* STEP 6: Dashboard Summary with Project Metrics & Quick Access */}
+          <DashboardSummary
+            projects={projects}
+            activeProjectId={currentProject.id}
+            onOpenProjectsList={() => setIsProjectsDrawerOpen(true)}
+            onOpenProject={handleOpenProject}
+            onNewProject={handleNewProject}
+          />
 
-        {/* STEP 6: Active Project Bar (Rename inline, Status, Auto-save, Quick Actions) */}
-        <ActiveProjectBar
-          currentProject={currentProject}
-          onRenameProject={(newName) => handleRenameProject(currentProject.id, newName)}
-          onDuplicateProject={() => handleDuplicateProject(currentProject.id)}
-          onNewProject={handleNewProject}
-          onOpenDrawer={() => setIsProjectsDrawerOpen(true)}
-          isAutoSaving={isAutoSaving}
-        />
+          {/* STEP 6: Active Project Bar (Rename inline, Status, Auto-save, Quick Actions) */}
+          <ActiveProjectBar
+            currentProject={currentProject}
+            onRenameProject={(newName) => handleRenameProject(currentProject.id, newName)}
+            onDuplicateProject={() => handleDuplicateProject(currentProject.id)}
+            onNewProject={handleNewProject}
+            onOpenDrawer={() => setIsProjectsDrawerOpen(true)}
+            isAutoSaving={isAutoSaving}
+          />
 
-        {/* 1. ARTICLE / STORY SECTION */}
-        <ArticleInputSection
-          title={config.title}
-          sourceUrl={config.sourceUrl}
-          storyContent={config.storyContent}
-          onChangeTitle={handleTitleChange}
-          onChangeUrl={handleUrlChange}
-          onChangeStory={handleStoryChange}
-          onApplySample={handleApplySample}
-          onClear={handleClearStory}
-        />
+          {/* 1. ARTICLE / STORY SECTION */}
+          <ArticleInputSection
+            title={config.title}
+            sourceUrl={config.sourceUrl}
+            storyContent={config.storyContent}
+            onChangeTitle={handleTitleChange}
+            onChangeUrl={handleUrlChange}
+            onChangeStory={handleStoryChange}
+            onApplySample={handleApplySample}
+            onClear={handleClearStory}
+          />
 
-        {/* 2-8. STUDIO CONTROLS SECTIONS */}
-        <StudioControls
-          contentType={config.contentType}
-          onChangeContentType={handleContentTypeChange}
-          duration={config.duration}
-          customDurationSeconds={config.customDurationSeconds || 60}
-          onChangeDuration={handleDurationChange}
-          onChangeCustomDurationSeconds={handleCustomDurationSecondsChange}
-          videoFormat={config.videoFormat}
-          onChangeVideoFormat={handleVideoFormatChange}
-          language={config.language}
-          onChangeLanguage={handleLanguageChange}
-          contentStyle={config.contentStyle}
-          onChangeContentStyle={handleContentStyleChange}
-          mood={config.mood}
-          onChangeMood={handleMoodChange}
-          selectedPlatforms={config.selectedPlatforms}
-          onTogglePlatform={handleTogglePlatform}
-        />
+          {/* 2-8. STUDIO CONTROLS SECTIONS */}
+          <StudioControls
+            contentType={config.contentType}
+            onChangeContentType={handleContentTypeChange}
+            duration={config.duration}
+            customDurationSeconds={config.customDurationSeconds || 60}
+            onChangeDuration={handleDurationChange}
+            onChangeCustomDurationSeconds={handleCustomDurationSecondsChange}
+            videoFormat={config.videoFormat}
+            onChangeVideoFormat={handleVideoFormatChange}
+            language={config.language}
+            onChangeLanguage={handleLanguageChange}
+            contentStyle={config.contentStyle}
+            onChangeContentStyle={handleContentStyleChange}
+            mood={config.mood}
+            onChangeMood={handleMoodChange}
+            selectedPlatforms={config.selectedPlatforms}
+            onTogglePlatform={handleTogglePlatform}
+          />
 
-        {/* 9. MAIN BUTTON SECTION */}
-        <GenerateAction
-          config={config}
-          hasStoryContent={Boolean(config.storyContent.trim())}
-          isLoading={isLoading}
-          loadingStage={loadingStage}
-          onGenerate={handleGenerate}
-          statusMessage={statusMessage}
-          errorMessage={errorMessage}
-        />
+          {/* 9. MAIN BUTTON SECTION */}
+          <GenerateAction
+            config={config}
+            hasStoryContent={Boolean(config.storyContent.trim())}
+            isLoading={isLoading}
+            loadingStage={loadingStage}
+            onGenerate={handleGenerate}
+            statusMessage={statusMessage}
+            errorMessage={errorMessage}
+          />
 
-        {/* 10. OUTPUT WORKSPACE SECTION */}
-        <OutputWorkspace
-          config={config}
-          hasStoryContent={Boolean(config.storyContent.trim())}
-          isInitialized={isOutputInitialized}
-          aiResult={aiResult}
-          isLoading={isLoading}
-          onRegenerate={handleGenerate}
-          onRegenerateComponent={handleRegenerateComponent}
-        />
-      </main>
+          {/* 10. OUTPUT WORKSPACE SECTION */}
+          <OutputWorkspace
+            config={config}
+            hasStoryContent={Boolean(config.storyContent.trim())}
+            isInitialized={isOutputInitialized}
+            aiResult={aiResult}
+            isLoading={isLoading}
+            projectName={currentProject.name}
+            onRegenerate={handleGenerate}
+            onRegenerateComponent={handleRegenerateComponent}
+            onUpdateVideoFormat={handleVideoFormatChange}
+            onUpdateAiResult={handleUpdateAiResult}
+          />
+        </main>
 
-      {/* Footer */}
-      <footer className="border-t border-slate-900 bg-[#07090e] py-6 mt-12 text-center text-xs text-slate-500">
-        <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="flex items-center gap-1.5 font-medium text-slate-400">
-            <span>GODSEYE AI</span>
-            <span>•</span>
-            <span className="text-slate-500">AI Content Command Center</span>
-          </p>
-          <p className="text-slate-600 text-[11px]">
-            Server-Side Gemini 3.8 Flash Engine • Real-Time Story Analysis & Video Synthesis
-          </p>
-        </div>
-      </footer>
+        {/* Footer */}
+        <footer className="border-t border-slate-900 bg-[#07090e] py-6 mt-12 text-center text-xs text-slate-500">
+          <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <p className="flex items-center gap-1.5 font-medium text-slate-400">
+              <span>GODSEYE AI</span>
+              <span>•</span>
+              <span className="text-slate-500">AI Content Command Center</span>
+            </p>
+            <p className="text-slate-600 text-[11px]">
+              Server-Side Gemini 3.8 Flash Engine • Real-Time Story Analysis & Video Synthesis
+            </p>
+          </div>
+        </footer>
+      </div>
+
+      {/* Theme Customizer Modal (Parts A-C) */}
+      <ThemeCustomizerModal
+        isOpen={isThemeModalOpen}
+        onClose={() => setIsThemeModalOpen(false)}
+        settings={themeSettings}
+        onChange={handleThemeChange}
+      />
 
       {/* Beginner Guide Modal */}
       <BeginnerGuideModal

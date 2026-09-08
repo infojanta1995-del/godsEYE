@@ -1,5 +1,5 @@
 import React from 'react';
-import { Eye, Sparkles, HelpCircle, RotateCcw, FolderArchive, Plus } from 'lucide-react';
+import { Eye, Sparkles, HelpCircle, RotateCcw, FolderArchive, Plus, Palette } from 'lucide-react';
 
 interface HeaderProps {
   onOpenGuide: () => void;
@@ -7,6 +7,7 @@ interface HeaderProps {
   projectsCount?: number;
   onOpenProjects?: () => void;
   onNewProject?: () => void;
+  onOpenTheme?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -15,6 +16,7 @@ export const Header: React.FC<HeaderProps> = ({
   projectsCount = 0,
   onOpenProjects,
   onNewProject,
+  onOpenTheme,
 }) => {
   return (
     <header className="border-b border-slate-800/80 bg-[#0c1017]/90 backdrop-blur-md sticky top-0 z-40">
@@ -71,6 +73,19 @@ export const Header: React.FC<HeaderProps> = ({
               <span className="px-1.5 py-0.2 rounded-full bg-cyan-900 text-cyan-200 text-[10px] font-mono font-bold">
                 {projectsCount}
               </span>
+            </button>
+          )}
+
+          {onOpenTheme && (
+            <button
+              type="button"
+              id="btn-header-theme"
+              onClick={onOpenTheme}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold text-slate-200 bg-slate-800/80 hover:bg-slate-700/80 border border-slate-700 transition-colors cursor-pointer"
+              title="Theme Customizer & Hue Shifter"
+            >
+              <Palette className="w-4 h-4 text-cyan-400" />
+              <span className="hidden sm:inline">Theme</span>
             </button>
           )}
 
